@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /flasho/
+Disallow: /admin/login
+
+Sitemap: https://flasho.services/sitemap.xml

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
-import { supabase } from '../lib/supabase';
+import api from '../lib/api'; // 🟢 IMPORT THE CENTRALIZED API CLIENT
 import toast from 'react-hot-toast';
 import { CheckCircle, XCircle, Loader2, User as UserIcon, Phone, Mail, Car, Wrench, CreditCard, Image as ImageIcon, Building2 } from 'lucide-react';
 
@@ -15,10 +14,8 @@ export default function Verification() {
   const fetchPendingWorkers = async () => {
     setIsLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await axios.get('http://localhost:5000/api/admin/workers/pending', {
-        headers: { Authorization: `Bearer ${session?.access_token}` }
-      });
+      // 🟢 NO MORE MANUAL SESSIONS OR HEADERS - The API client handles it!
+      const res = await api.get('/admin/workers/pending');
       setPendingWorkers(res.data);
     } catch (error) {
       toast.error("Failed to load pending verifications");
@@ -31,11 +28,8 @@ export default function Verification() {
     if (!window.confirm(`Are you sure you want to ${status.toUpperCase()} this worker?`)) return;
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.put(`http://localhost:5000/api/admin/workers/${id}/verify`,
-        { status }, 
-        { headers: { Authorization: `Bearer ${session?.access_token}` } }
-      );
+      // 🟢 NO MORE MANUAL SESSIONS OR HEADERS
+      await api.put(`/admin/workers/${id}/verify`, { status });
 
       toast.success(`Worker ${status} successfully!`);
       setPendingWorkers(prev => prev.filter(w => w._id !== id));
@@ -103,7 +97,7 @@ export default function Verification() {
                     {worker.full_name || "Unknown User"}
                   </h3>
                   
-                  {/* 🟢 NEW: Agency Badge */}
+                  {/* Agency Badge */}
                   {worker.agency_id ? (
                     <span className="inline-flex items-center gap-1.5 mt-1.5 px-2.5 py-1 rounded-md text-[11px] font-bold uppercase tracking-wider bg-emerald-100 text-emerald-800 border border-emerald-200">
                       <Building2 size={12} />

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { supabase } from '../lib/supabase';
+import api from '../lib/api'; // 🟢 IMPORT THE CENTRALIZED API CLIENT
 import { Briefcase, Loader2, Calendar, User, UserCheck, MapPin, Image as ImageIcon, X, Building2, Search } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -21,23 +20,17 @@ export default function Jobs() {
 
   const fetchJobs = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
+      // 🟢 NO MORE MANUAL SESSIONS OR HEADERS - The API client handles it!
       
       // 1. Check user role to determine which endpoint to hit
-      const meRes = await axios.get('http://localhost:5000/api/users/me', {
-        headers: { Authorization: `Bearer ${session?.access_token}` }
-      });
+      const meRes = await api.get('/users/me');
       
       // Use 'super_admin' or 'admin' to fetch ALL platform jobs, otherwise restrict to Agency jobs
       const isSuperAdmin = meRes.data.role === 'super_admin' || meRes.data.role === 'admin';
-      const endpoint = isSuperAdmin 
-        ? 'http://localhost:5000/api/admin/bookings'
-        : 'http://localhost:5000/api/agency/bookings';
+      const endpoint = isSuperAdmin ? '/admin/bookings' : '/agency/bookings';
 
-      // 2. Fetch the appropriate jobs
-      const jobsRes = await axios.get(endpoint, {
-        headers: { Authorization: `Bearer ${session?.access_token}` }
-      });
+      // 2. Fetch the appropriate jobs using the dynamic endpoint
+      const jobsRes = await api.get(endpoint);
       
       setJobs(jobsRes.data || []);
     } catch (error) {
@@ -90,7 +83,7 @@ export default function Jobs() {
   return (
     <div className="max-w-7xl mx-auto space-y-6">
       
-      {/* 🟢 Header */}
+      {/* Header */}
       <div className="bg-white p-6 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-extrabold text-gray-900 tracking-tight flex items-center">
@@ -104,7 +97,7 @@ export default function Jobs() {
         </div>
       </div>
 
-      {/* 🟢 Search & Filter Toolbar */}
+      {/* Search & Filter Toolbar */}
       <div className="bg-white p-4 rounded-2xl border border-gray-100 shadow-sm flex flex-col md:flex-row gap-4">
         {/* Search Input */}
         <div className="relative flex-1">
@@ -119,7 +112,7 @@ export default function Jobs() {
         </div>
       </div>
 
-      {/* 🟢 Jobs Grid */}
+      {/* Jobs Grid */}
       {jobs.length === 0 ? (
         <div className="p-16 text-center bg-white rounded-2xl shadow-sm border border-gray-100">
           <Briefcase className="mx-auto text-gray-300 mb-3" size={40}/>
@@ -164,7 +157,7 @@ export default function Jobs() {
                 </div>
               </div>
 
-              {/* 🟢 PROOF OF WORK BUTTON */}
+              {/* PROOF OF WORK BUTTON */}
               {job.status === 'completed' && job.before_image && job.after_image && (
                 <button 
                   onClick={() => setSelectedProof(job)}
@@ -222,7 +215,7 @@ export default function Jobs() {
         </div>
       )}
 
-      {/* 🟢 PROOF OF WORK IMAGE MODAL */}
+      {/* PROOF OF WORK IMAGE MODAL */}
       {selectedProof && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-gray-900/80 backdrop-blur-sm">
           <div className="bg-white rounded-3xl w-full max-w-4xl max-h-[95vh] overflow-hidden shadow-2xl flex flex-col animate-in fade-in zoom-in duration-200">

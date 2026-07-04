@@ -1,8 +1,7 @@
 import React, { useState } from 'react';
 import { Send, Image as ImageIcon, Tag, Megaphone, Loader2 } from 'lucide-react';
 import toast from 'react-hot-toast';
-import { supabase } from '../lib/supabase';
-import axios from 'axios';
+import api from '../lib/api'; // 🟢 IMPORT THE CENTRALIZED API CLIENT
 
 const Marketing = () => {
   const [formData, setFormData] = useState({
@@ -22,22 +21,8 @@ const Marketing = () => {
 
     setIsSending(true);
     try {
-      // 1. Get the current active session token from Supabase
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-
-      if (!token) {
-        toast.error("Authentication error. Please log in again.");
-        setIsSending(false);
-        return;
-      }
-
-      // 2. Send the request with the proper Bearer token
-      await axios.post('http://localhost:5000/api/admin/notifications/broadcast', formData, {
-        headers: {
-          Authorization: `Bearer ${token}`
-        }
-      });
+      // 🟢 NO MORE MANUAL SESSIONS OR HEADERS - The API client handles it!
+      await api.post('/admin/notifications/broadcast', formData);
       
       toast.success("Broadcast sent successfully to all users!");
       setFormData({ title: '', message: '', imageUrl: '', discountCode: '' }); 

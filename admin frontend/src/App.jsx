@@ -2,7 +2,9 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster } from 'react-hot-toast';
 import { useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
-import axios from 'axios';
+import api from './lib/api'; // 🟢 Use the centralized API client
+
+// Component Imports
 import Sidebar from './components/Sidebar';
 import Dashboard from './pages/Dashboard';
 import Workers from './pages/WorkerList';
@@ -31,12 +33,10 @@ function ProtectedRoute({ children }) {
           return;
         }
 
-        // Verify if the active session belongs to an admin
-        const res = await axios.get('http://localhost:5000/api/users/me', {
-          headers: { Authorization: `Bearer ${session?.access_token}` }
-        });
+        // 🟢 DYNAMIC URL: Verify if the active session belongs to an admin
+        const res = await api.get('/users/me');
 
-        if (res?.data?.role === 'admin') {
+        if (res?.data?.role === 'admin' || res?.data?.role === 'super_admin') {
           setSession(session);
           setIsAdmin(true);
         } else {

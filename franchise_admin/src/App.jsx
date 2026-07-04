@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { Toaster } from 'react-hot-toast';
 import { supabase } from './lib/supabase';
-import axios from 'axios';
+import api from './api'; // 🟢 IMPORT THE CENTRALIZED API CLIENT
 
 // Layout & Auth
 import Layout from './components/Layout';
@@ -31,10 +31,9 @@ function ProtectedRoute({ children }) {
           return;
         }
 
+        // 🟢 NO MORE MANUAL SESSIONS OR HEADERS - The API client handles it!
         // Verify if the active session belongs to a valid Franchise/Agency User
-        const res = await axios.get('http://localhost:5000/api/users/me', {
-          headers: { Authorization: `Bearer ${session?.access_token}` }
-        });
+        const res = await api.get('/users/me');
 
         // Check if the user has an assigned agency_id
         if (res?.data?.agency_id) {

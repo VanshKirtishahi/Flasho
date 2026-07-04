@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { supabase } from '../lib/supabase';
+import api from '../api'; // 🟢 IMPORT THE CENTRALIZED API CLIENT
 import { Star, MessageSquare, Loader2, Calendar, User } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -14,11 +13,9 @@ export default function AgencyReviews() {
 
   const fetchAgencyReviews = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      // Hits the agency-specific endpoint we created in the backend
-      const res = await axios.get('http://localhost:5000/api/agency/reviews', {
-        headers: { Authorization: `Bearer ${session?.access_token}` }
-      });
+      // 🟢 NO MORE MANUAL SESSIONS OR HEADERS - The API client handles it!
+      const res = await api.get('/agency/reviews');
+      
       setReviews(res.data);
     } catch (error) {
       toast.error("Failed to load your team's reviews");

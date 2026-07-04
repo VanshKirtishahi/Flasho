@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { supabase } from '../lib/supabase';
+import api from '../lib/api'; // 🟢 IMPORT THE CENTRALIZED API CLIENT
 import { Star, MessageSquare, Loader2, Calendar, User, UserCheck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -14,10 +13,8 @@ export default function Reviews() {
 
   const fetchReviews = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await axios.get('http://localhost:5000/api/admin/reviews', {
-        headers: { Authorization: `Bearer ${session?.access_token}` }
-      });
+      // 🟢 NO MORE MANUAL SESSIONS OR HEADERS - The API client handles it!
+      const res = await api.get('/admin/reviews');
       setReviews(res.data);
     } catch (error) {
       toast.error("Failed to load reviews");

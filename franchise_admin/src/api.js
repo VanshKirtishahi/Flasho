@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 
 // Create a singleton axios instance
 const api = axios.create({
-  baseURL: 'https://steve-mugwumpish-keesha.ngrok-free.dev/api',
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:5000/api',
   timeout: 15000, // 15 second timeout to prevent infinite hanging
   headers: {
     'Content-Type': 'application/json',

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
-import { supabase } from '../lib/supabase';
+import api from '../lib/api';
 import toast from 'react-hot-toast';
 // 🟢 FIXED: Added HardHat to the import list below
 import { Users, Briefcase, IndianRupee, ClipboardList, Loader2, TrendingUp, Calendar, HardHat } from 'lucide-react';
@@ -16,10 +15,7 @@ export default function Dashboard() {
   const fetchStats = async () => {
     try {
       setIsLoading(true);
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await axios.get('http://localhost:5000/api/admin/stats', {
-        headers: { Authorization: `Bearer ${session?.access_token}` }
-      });
+      const res = await api.get('/admin/stats');
       setStats(res.data);
     } catch (error) {
       toast.error("Failed to load dashboard statistics");

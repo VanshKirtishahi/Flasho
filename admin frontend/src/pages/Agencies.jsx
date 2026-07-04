@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import axios from 'axios';
-import { supabase } from '../lib/supabase';
+import api from '../lib/api'; // 🟢 IMPORT THE CENTRALIZED API CLIENT
 import { Building2, Plus, Users, CheckCircle, IndianRupee, X, Pencil, Trash2, MapPin, Phone, User as UserIcon, Key } from 'lucide-react';
 import toast from 'react-hot-toast';
 
@@ -11,27 +10,23 @@ const Agencies = () => {
   
   // Modals state
   const [showFormModal, setShowFormModal] = useState(false);
-  const [showCredsModal, setShowCredsModal] = useState(false); // 🟢 NEW
+  const [showCredsModal, setShowCredsModal] = useState(false);
   const [selectedAgency, setSelectedAgency] = useState(null); 
   const [editingId, setEditingId] = useState(null);
   
   const [formData, setFormData] = useState({ name: '', contact_person: '', phone: '', address: '' });
   
-  // 🟢 NEW: Credentials State
+  // Credentials State
   const [credsData, setCredsData] = useState({ email: '', password: '' });
   const [isCreatingCreds, setIsCreatingCreds] = useState(false);
-
-  const API_URL = "http://localhost:5000/api";
 
   const fetchData = async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = { Authorization: `Bearer ${session?.access_token}` };
-
+      // 🟢 NO MORE MANUAL SESSIONS OR HEADERS - The API client handles it!
       const [agenciesRes, workersRes] = await Promise.all([
-        axios.get(`${API_URL}/admin/agencies/stats`, { headers }),
-        axios.get(`${API_URL}/admin/workers`, { headers })
+        api.get('/admin/agencies/stats'),
+        api.get('/admin/workers')
       ]);
 
       setAgencies(agenciesRes.data);
@@ -61,14 +56,12 @@ const Agencies = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = { Authorization: `Bearer ${session?.access_token}` };
-
+      // 🟢 DYNAMIC ENDPOINTS
       if (editingId) {
-        await axios.put(`${API_URL}/admin/agencies/${editingId}`, formData, { headers });
+        await api.put(`/admin/agencies/${editingId}`, formData);
         toast.success("Agency updated successfully!");
       } else {
-        await axios.post(`${API_URL}/admin/agencies`, formData, { headers });
+        await api.post('/admin/agencies', formData);
         toast.success("Agency created successfully!");
       }
       fetchData();
@@ -82,8 +75,7 @@ const Agencies = () => {
   const handleDelete = async (id, name) => {
     if (!window.confirm(`Are you sure you want to delete ${name}?`)) return;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.delete(`${API_URL}/admin/agencies/${id}`, { headers: { Authorization: `Bearer ${session?.access_token}` } });
+      await api.delete(`/admin/agencies/${id}`);
       toast.success("Agency deleted successfully");
       setSelectedAgency(null);
       fetchData();
@@ -92,15 +84,11 @@ const Agencies = () => {
     }
   };
 
-  // 🟢 NEW: HANDLE CREDENTIALS SUBMISSION
   const handleCreateCredentials = async (e) => {
     e.preventDefault();
     setIsCreatingCreds(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const headers = { Authorization: `Bearer ${session?.access_token}` };
-
-      await axios.post(`${API_URL}/admin/agencies/${selectedAgency._id}/credentials`, credsData, { headers });
+      await api.post(`/admin/agencies/${selectedAgency._id}/credentials`, credsData);
       
       toast.success("Franchise Login Credentials created!");
       setShowCredsModal(false);
@@ -187,7 +175,6 @@ const Agencies = () => {
               </div>
               
               <div className="flex items-center gap-2">
-                {/* 🟢 NEW: CREATE LOGIN BUTTON */}
                 <button onClick={() => setShowCredsModal(true)} className="p-2.5 bg-[#05AC5F] text-white hover:bg-[#048C4F] rounded-lg transition-colors font-bold text-sm flex items-center gap-2 shadow-md shadow-[#05AC5F]/20">
                   <Key size={16}/> Create Login
                 </button>
@@ -199,7 +186,6 @@ const Agencies = () => {
             </div>
 
             <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-white">
-              {/* Stats & Workers rendering (unchanged for brevity, same as previous code) */}
               <div className="grid grid-cols-3 gap-6 mb-8">
                 <div className="bg-gray-50 p-6 rounded-2xl border border-gray-100 shadow-sm flex items-center gap-4"><div className="p-3 bg-white rounded-xl shadow-sm"><Users className="text-gray-600"/></div><div><p className="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total Workers</p><p className="text-2xl font-black text-gray-900">{selectedAgency.total_workers}</p></div></div>
                 <div className="bg-[#E8F8F0]/50 p-6 rounded-2xl border border-[#05AC5F]/10 shadow-sm flex items-center gap-4"><div className="p-3 bg-white rounded-xl shadow-sm"><CheckCircle className="text-[#05AC5F]"/></div><div><p className="text-[11px] font-bold text-[#048C4F] uppercase tracking-wider">Jobs Completed</p><p className="text-2xl font-black text-[#048C4F]">{selectedAgency.total_jobs_completed}</p></div></div>
@@ -234,7 +220,7 @@ const Agencies = () => {
         </div>
       )}
 
-      {/* 🟢 NEW: CREDENTIALS MODAL */}
+      {/* CREDENTIALS MODAL */}
       {showCredsModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[60] p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden">
@@ -269,7 +255,7 @@ const Agencies = () => {
         </div>
       )}
 
-      {/* Form Modal (Unchanged for brevity, same as previous) */}
+      {/* Form Modal */}
       {showFormModal && (
         <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50 p-4 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-xl w-full max-w-md overflow-hidden">

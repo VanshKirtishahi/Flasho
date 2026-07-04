@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { supabase } from '../lib/supabase';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
-import axios from 'axios';
+import api from '../lib/api'; 
 
 export default function Login() {
   const [email, setEmail] = useState('');
@@ -22,13 +22,11 @@ export default function Login() {
 
       if (error) throw error;
 
-      // 2. Verify Admin Role from MongoDB
-      const res = await axios.get('http://localhost:5000/api/users/me', {
-        headers: { Authorization: `Bearer ${data?.session?.access_token}` }
-      });
+      // 2. 🟢 DYNAMIC URL: Verify Admin Role using the centralized API client
+      const res = await api.get('/users/me');
 
       // 3. Reject non-admin users
-      if (res?.data?.role !== 'admin') {
+      if (res?.data?.role !== 'admin' && res?.data?.role !== 'super_admin') {
         await supabase.auth.signOut();
         throw new Error("Unauthorized Access: Admins only.");
       }

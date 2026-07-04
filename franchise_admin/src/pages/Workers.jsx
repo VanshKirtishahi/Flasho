@@ -15,7 +15,7 @@ const Workers = () => {
   // Drawer & Action State
   const [selectedWorker, setSelectedWorker] = useState(null);
   const [isDrawerOpen, setIsDrawerOpen] = useState(false);
-  const [isBlocking, setIsBlocking] = useState(false); // 🟢 New Loading State for Blocking
+  const [isBlocking, setIsBlocking] = useState(false); 
 
   const fetchWorkers = async () => {
     try {
@@ -66,7 +66,7 @@ const Workers = () => {
     setTimeout(() => setSelectedWorker(null), 300); // clear after animation
   };
 
-  // 🟢 NEW: BLOCK / UNBLOCK LOGIC
+  // BLOCK / UNBLOCK LOGIC
   const handleToggleBlock = async () => {
     if (!selectedWorker) return;
     
@@ -101,7 +101,7 @@ const Workers = () => {
   };
 
 
-  // 🟢 APPROVE WORKER LOGIC
+  // APPROVE WORKER LOGIC
   const handleApproveWorker = async () => {
     if (!selectedWorker) return;
     setIsApproving(true);
@@ -257,7 +257,7 @@ const Workers = () => {
         )}
       </div>
 
-      {/* 🟢 SLIDE-OVER DRAWER FOR WORKER DETAILS */}
+      {/* SLIDE-OVER DRAWER FOR WORKER DETAILS */}
       {isDrawerOpen && (
         <div className="fixed inset-0 z-50 overflow-hidden">
           {/* Backdrop */}
@@ -407,7 +407,7 @@ const Workers = () => {
               )}
             </div>
 
-            {/* 🟢 STICKY BOTTOM ACTIONS WITH APPROVE & BLOCK LOGIC */}
+            {/* STICKY BOTTOM ACTIONS WITH APPROVE & BLOCK LOGIC */}
             <div className="bg-white p-5 border-t border-gray-200 flex gap-3 shadow-[0_-10px_20px_-10px_rgba(0,0,0,0.05)] z-10">
                
                {/* APPROVE BUTTON (Hides if already approved) */}
@@ -443,7 +443,8 @@ const Workers = () => {
         </div>
       )}
 
-      <style jsx>{`
+      {/* 🟢 REMOVED JSX KEYWORD FROM THE STYLE TAG */}
+      <style>{`
         .animate-slide-in-right {
           animation: slideIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }

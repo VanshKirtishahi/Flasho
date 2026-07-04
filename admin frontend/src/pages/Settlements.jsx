@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Wallet, User, Building2, Loader2, IndianRupee, History, ArrowRightLeft, XCircle, Landmark, QrCode, Clock } from 'lucide-react';
 import toast from 'react-hot-toast';
-import axios from 'axios';
-import { supabase } from '../lib/supabase';
+import api from '../lib/api'; // 🟢 IMPORT THE CENTRALIZED API CLIENT
 
 const formatCurrency = (amount) => Number(amount || 0).toFixed(2);
 
@@ -19,16 +18,12 @@ export default function Settlements() {
   const fetchSettlements = async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token;
-      
       const endpoint = activeTab === 'requests' 
         ? '/admin/withdrawals/pending' 
         : `/admin/settlements/${activeTab}`;
 
-      const response = await axios.get(`http://localhost:5000/api${endpoint}`, {
-        headers: { Authorization: `Bearer ${token}` }
-      });
+      // 🟢 NO MORE MANUAL SESSIONS OR HEADERS - The API client handles it!
+      const response = await api.get(endpoint);
       
       setData(response?.data || []);
     } catch (error) {
@@ -38,7 +33,7 @@ export default function Settlements() {
     }
   };
 
-  // 🟢 ONLY PENDING REQUESTS CAN BE ACTIONED NOW
+  // ONLY PENDING REQUESTS CAN BE ACTIONED NOW
   const handleWithdrawalAction = async (id, status) => {
     const isApprove = status === 'approved';
     const msg = isApprove 
@@ -49,11 +44,8 @@ export default function Settlements() {
     
     setProcessingId(id);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.put(`http://localhost:5000/api/admin/withdrawals/${id}`, 
-        { status },
-        { headers: { Authorization: `Bearer ${session?.access_token}` } }
-      );
+      // 🟢 DYNAMIC ENDPOINTS & NO MANUAL HEADERS
+      await api.put(`/admin/withdrawals/${id}`, { status });
       
       toast.success(isApprove ? `Funds transferred successfully!` : `Request rejected & refunded!`);
       setData((prev) => prev.filter(item => item?._id !== id));
@@ -209,7 +201,7 @@ export default function Settlements() {
                              </button>
                           </div>
                         ) : (
-                          // 🟢 READ-ONLY BADGE INSTEAD OF A DANGEROUS BUTTON
+                          // READ-ONLY BADGE
                           <div className={`inline-flex items-center justify-center px-3 py-1.5 text-[11px] font-bold uppercase tracking-wider rounded-lg ${isSettled ? 'bg-gray-50 text-gray-400' : 'bg-gray-100 text-gray-600 border border-gray-200'}`}>
                             {isSettled ? (
                               <>No Pending Funds</>

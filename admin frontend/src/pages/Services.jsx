@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
 import { supabase } from '../lib/supabase';
+import api from '../lib/api'; // 🟢 DYNAMIC API CLIENT IMPORTED
 import toast from 'react-hot-toast';
 import { Plus, Trash2, X, UploadCloud, Loader2, Edit2, Package, Tag, DollarSign, Image, FileText, CheckCircle, XCircle, Search, ChevronDown, ChevronRight, Layers } from 'lucide-react';
 
@@ -12,7 +12,7 @@ export default function Services() {
   const [searchQuery, setSearchQuery] = useState('');
   const [uploadingField, setUploadingField] = useState(null);
   
-  // 🟢 Accordion toggle state for opening/closing sub-services
+  // Accordion toggle state for opening/closing sub-services
   const [expandedCores, setExpandedCores] = useState({}); 
   const [activeCoreId, setActiveCoreId] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -29,10 +29,8 @@ export default function Services() {
   const fetchServices = async () => {
     setIsLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const res = await axios.get('http://localhost:5000/api/admin/services', { 
-        headers: { Authorization: `Bearer ${session?.access_token}` } 
-      });
+      // 🟢 NO MORE MANUAL HEADERS - The API client handles it!
+      const res = await api.get('/admin/services');
       setServices(res.data || []);
       
       // Auto-expand all cores by default
@@ -71,7 +69,7 @@ export default function Services() {
     }
   };
 
-  // 🟢 CORE vs SUB-SERVICE Handlers
+  // CORE vs SUB-SERVICE Handlers
   const handleAddCore = () => {
     setForm(initialFormState);
     setEditingId(null);
@@ -121,17 +119,12 @@ export default function Services() {
     };
     
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
+      // 🟢 DYNAMIC ENDPOINTS & NO MANUAL HEADERS
       if (editingId) {
-        await axios.put(`http://localhost:5000/api/admin/services/${editingId}`, cleanedForm, { 
-          headers: { Authorization: `Bearer ${session?.access_token}` } 
-        });
+        await api.put(`/admin/services/${editingId}`, cleanedForm);
         toast.success("Service updated successfully!");
       } else {
-        await axios.post('http://localhost:5000/api/admin/services', cleanedForm, { 
-          headers: { Authorization: `Bearer ${session?.access_token}` } 
-        });
+        await api.post('/admin/services', cleanedForm);
         toast.success(cleanedForm.parent_id ? "Sub-Service added!" : "Core Service added!");
       }
       
@@ -145,19 +138,16 @@ export default function Services() {
   const handleDelete = async (id, isCore = false) => {
     if (!window.confirm(isCore ? "Delete this Core Service AND all its Sub-Services? This cannot be undone." : "Delete this Sub-Service?")) return;
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
       // If it's a core service, delete all children first
       if (isCore) {
         const subs = services.filter(s => s.parent_id === id);
         for (let sub of subs) {
-          await axios.delete(`http://localhost:5000/api/admin/services/${sub._id}`, { headers: { Authorization: `Bearer ${session?.access_token}` } });
+          await api.delete(`/admin/services/${sub._id}`);
         }
       }
 
-      await axios.delete(`http://localhost:5000/api/admin/services/${id}`, { 
-        headers: { Authorization: `Bearer ${session?.access_token}` } 
-      });
+      // 🟢 DYNAMIC ENDPOINTS & NO MANUAL HEADERS
+      await api.delete(`/admin/services/${id}`);
       toast.success("Deleted successfully");
       fetchServices();
     } catch { 
@@ -165,10 +155,10 @@ export default function Services() {
     }
   };
 
-  // 🟢 SMART SEARCH LOGIC (Keeps Cores visible if a Sub-Service matches the search)
+  // SMART SEARCH LOGIC
   const coreServices = services.filter(s => {
-    if (s.parent_id) return false; // Hide sub-services from the top loop
-    if (!searchQuery) return true; // Show all if no search
+    if (s.parent_id) return false; 
+    if (!searchQuery) return true; 
 
     const coreMatches = s.title?.toLowerCase().includes(searchQuery.toLowerCase()) || s.category?.toLowerCase().includes(searchQuery.toLowerCase());
     const childMatches = services.some(child => child.parent_id === s._id && (child.title?.toLowerCase().includes(searchQuery.toLowerCase()) || child.category?.toLowerCase().includes(searchQuery.toLowerCase())));
@@ -216,7 +206,7 @@ export default function Services() {
 
             return (
               <div key={core._id} className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden transition-all duration-300">
-                {/* 🟢 CORE PARENT CARD */}
+                {/* CORE PARENT CARD */}
                 <div className="p-5 md:p-6 flex flex-col md:flex-row items-center justify-between gap-6">
                   <div className="flex items-center gap-5 w-full md:w-auto">
                     <div className="w-20 h-20 rounded-xl overflow-hidden bg-gray-50 shrink-0 border border-gray-100 relative">
@@ -243,7 +233,7 @@ export default function Services() {
                   </div>
                 </div>
 
-                {/* 🟢 NESTED SUB-SERVICES ACCORDION */}
+                {/* NESTED SUB-SERVICES ACCORDION */}
                 {isExpanded && (
                   <div className="bg-gray-50/50 border-t border-gray-100 p-5 md:p-6">
                     {subs.length === 0 ? (
@@ -281,7 +271,7 @@ export default function Services() {
         </div>
       )}
 
-      {/* 🟢 MODAL OVERLAY (Used for both Core and Sub Services) */}
+      {/* MODAL OVERLAY */}
       {isModalOpen && (
         <div className="fixed inset-0 bg-gray-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4 pt-10 pb-10">
           <div className="bg-white rounded-[2rem] w-full max-w-3xl max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in-95 duration-200">

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
-import { supabase } from '../lib/supabase';
+import api from '../lib/api'; // 🟢 IMPORT THE CENTRALIZED API CLIENT
 import toast from 'react-hot-toast';
 import { CheckCircle, XCircle, ExternalLink, Truck, Search, Users, Clock, ShieldCheck, ShieldX, ChevronDown, Building2 } from 'lucide-react';
 
@@ -23,11 +22,8 @@ export default function Workers() {
   const fetchWorkers = async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      const res = await axios.get('http://localhost:5000/api/admin/workers', {
-        headers: { Authorization: `Bearer ${session?.access_token}` }
-      });
+      // 🟢 NO MORE MANUAL SESSIONS OR HEADERS - The API client handles it!
+      const res = await api.get('/admin/workers');
       
       setWorkers(res.data);
     } catch {
@@ -39,11 +35,9 @@ export default function Workers() {
 
   const handleVerification = async (id, status) => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.put(`http://localhost:5000/api/admin/workers/${id}/verify`,
-        { status },
-        { headers: { Authorization: `Bearer ${session?.access_token}` } }
-      );
+      // 🟢 NO MORE MANUAL SESSIONS OR HEADERS
+      await api.put(`/admin/workers/${id}/verify`, { status });
+      
       toast.success(`Partner ${status === 'approved' ? 'approved ✓' : 'rejected'}`);
       fetchWorkers();
     } catch {
@@ -144,7 +138,7 @@ export default function Workers() {
                         <div className="font-extrabold text-gray-900 text-sm flex items-center gap-2 truncate">
                           <span className="truncate">{w.full_name}</span>
                           
-                          {/* 🟢 AGENCY NAME BADGE */}
+                          {/* AGENCY NAME BADGE */}
                           {w.agency_id && (
                             <span className="inline-flex items-center text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider bg-emerald-100 text-emerald-800 font-bold whitespace-nowrap">
                               <Building2 size={10} className="mr-1" />
@@ -214,7 +208,7 @@ export default function Workers() {
                         </div>
                         {w.custom_service && <p className="text-xs text-gray-500 mt-3"><span className="font-bold text-gray-700">Custom:</span> {w.custom_service}</p>}
                         
-                        {/* 🟢 AGENCY NAME IN ACCORDION */}
+                        {/* AGENCY NAME IN ACCORDION */}
                         <div className="mt-4 pt-4 border-t border-gray-50">
                            <h4 className="text-[11px] font-extrabold text-gray-400 uppercase tracking-wider mb-2">Employment Type</h4>
                            {w.agency_id ? (

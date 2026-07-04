@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import axios from 'axios';
-import { supabase } from '../lib/supabase';
+import api from '../lib/api'; // 🟢 IMPORT THE CENTRALIZED API CLIENT
 import toast from 'react-hot-toast';
 import { Trash2, Search, Users as UsersIcon, MapPin, Mail, Phone, Calendar } from 'lucide-react';
 
@@ -16,12 +15,8 @@ export default function UserList() {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      // 🟢 FIXED: Calling the correct Admin endpoint
-      const res = await axios.get('http://localhost:5000/api/admin/users', {
-        headers: { Authorization: `Bearer ${session?.access_token}` }
-      });
+      // 🟢 NO MORE MANUAL SESSIONS OR HEADERS - The API client handles it!
+      const res = await api.get('/admin/users');
       
       setUsers(res.data);
     } catch (error) {
@@ -35,10 +30,8 @@ export default function UserList() {
     if (!window.confirm(`Are you sure you want to delete ${name}? This action cannot be undone.`)) return;
 
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      await axios.delete(`http://localhost:5000/api/admin/users/${id}`, {
-        headers: { Authorization: `Bearer ${session?.access_token}` }
-      });
+      // 🟢 NO MORE MANUAL SESSIONS OR HEADERS
+      await api.delete(`/admin/users/${id}`);
       
       toast.success('Customer deleted successfully');
       setUsers(users.filter(u => u._id !== id));

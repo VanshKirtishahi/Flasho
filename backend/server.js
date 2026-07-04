@@ -23,7 +23,7 @@ const io = new Server(server, {
 
 // 🟢 BULLETPROOF CORS CONFIGURATION
 app.use(cors({
-  origin: ['http://localhost:5174', 'http://localhost:5173', 'http://localhost:3000'], // Add your React port here
+  origin: ['http://localhost:5174', 'http://localhost:5173', 'http://localhost:3000', 'https://admin.flasho.services', 'https://franchise.flasho.services'], // Add your React port here
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'ngrok-skip-browser-warning'],
   credentials: true

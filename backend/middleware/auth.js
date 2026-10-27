@@ -3,14 +3,17 @@ const { createClient } = require('@supabase/supabase-js');
 const User = require('../models/User');
 require('dotenv').config();
 
-// 1. Initialize Firebase Admin
+/// 1. Initialize Firebase Admin
 if (!admin.apps.length) {
-  const serviceAccount = JSON.parse(
-  process.env.FIREBASE_SERVICE_ACCOUNT
-);
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
-  });
+  // 🟢 Safety check to provide a clear error instead of a crash
+  if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+    console.warn("⚠️ WARNING: FIREBASE_SERVICE_ACCOUNT is missing from .env!");
+  } else {
+    const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+    admin.initializeApp({
+      credential: admin.credential.cert(serviceAccount)
+    });
+  }
 }
 
 // 2. Initialize Supabase Admin (For React Web Panel)

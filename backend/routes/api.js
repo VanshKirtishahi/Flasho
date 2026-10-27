@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const axios = require('axios');
 const authMiddleware = require('../middleware/auth');
 const Razorpay = require('razorpay');
 
@@ -15,15 +16,9 @@ const Review = require('../models/Review');
 const WithdrawalRequest = require('../models/WithdrawalRequest');
 const NotificationService = require('../services/NotificationService');
 
-const razorpay = new Razorpay({
-  key_id: process.env.RAZORPAY_KEY_ID, 
-  key_secret: process.env.RAZORPAY_KEY_SECRET
-});
-
 // ==========================================
-// 🟢 MVC ARCHITECTURE ROUTES
+// MVC ARCHITECTURE ROUTES
 // ==========================================
-
 // USER & AUTH
 router.post('/users/sync', authMiddleware, userController.syncUser);
 router.get('/users/me', authMiddleware, userController.getProfile);
@@ -54,16 +49,38 @@ router.post('/worker/verify-submit', authMiddleware, workerController.submitVeri
 router.post('/worker/withdraw', authMiddleware, workerController.requestWithdrawal);
 
 // ==========================================
-// 🟢 REMAINING ROUTES (Payments & Admin Panel)
+// REMAINING ROUTES (Payments & Admin Panel)
 // ==========================================
 
 router.post('/payments/create-order', authMiddleware, async (req, res) => {
   try {
-    const { amount } = req.body; 
-    const options = { amount: Math.round(amount * 100), currency: "INR", receipt: `receipt_${Date.now()}` };
+    const { amount } = req.body;
+    
+    if (!amount || amount <= 0) {
+      return res.status(400).json({ error: 'Invalid amount sent from app' });
+    }
+
+    // Initialize without dummy keys so it strictly uses your .env file
+    const razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET
+    });
+
+    const options = { 
+      amount: Math.round(amount * 100), // Convert to paise
+      currency: "INR", 
+      receipt: `receipt_${Date.now()}` 
+    };
+    
     const order = await razorpay.orders.create(options);
     res.json(order);
-  } catch (error) { res.status(500).json({ error: 'Failed to create Razorpay order' }); }
+  } catch (error) {
+    console.error("Razorpay Order Creation Error:", error);
+    // Send the EXACT error to the Flutter app so you can see it
+    res.status(500).json({ 
+      error: error.description || error.message || 'Failed to create Razorpay order' 
+    });
+  }
 });
 
 router.post('/admin/notifications/broadcast', authMiddleware, async (req, res) => {
@@ -72,69 +89,80 @@ router.post('/admin/notifications/broadcast', authMiddleware, async (req, res) =
     if (!title || !message) return res.status(400).json({ error: "Title and message are required" });
     await NotificationService.sendBroadcastOffer(title, message, imageUrl, { discountCode: discountCode || null });
     res.status(200).json({ message: "Broadcast sent successfully to all users!" });
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 router.get('/admin/settlements/workers', authMiddleware, async (req, res) => {
   try {
-    const pendingWorkers = await User.find({ role: 'worker', wallet_balance: { $gt: 0 }, $or: [{ agency_id: null }, { agency_id: { $exists: false } }] }).select('full_name email phone completed_jobs wallet_balance').sort({ wallet_balance: -1 });
+    const pendingWorkers = await User.find({
+      role: 'worker',
+      wallet_balance: { $gt: 0 },
+      $or: [{ agency_id: null }, { agency_id: {$exists: false } }]
+    }).select('full_name email phone completed_jobs wallet_balance').sort({ wallet_balance: -1 });
     res.status(200).json(pendingWorkers);
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 router.get('/admin/settlements/agencies', authMiddleware, async (req, res) => {
   try {
     let agencies = await Agency.find({}).select('name email phone completed_jobs wallet_balance').sort({ wallet_balance: -1 });
     res.status(200).json(agencies);
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 router.post('/admin/settlements/process', authMiddleware, async (req, res) => {
   try {
     const { targetId, type, amount } = req.body;
     const exactAmount = Number(Number(amount).toFixed(2));
-    
     if (exactAmount <= 0) {
       return res.status(400).json({ error: "Invalid settlement amount" });
     }
-
     if (type === 'workers') {
       const worker = await User.findById(targetId);
       if (worker) {
-        // 🟢 SAFE MATH: Subtract the exact payout, never hardcode to 0
         worker.wallet_balance = Number(Math.max(0, worker.wallet_balance - exactAmount).toFixed(2));
         await worker.save();
       }
-    } 
-    else if (type === 'agencies') {
-      const Agency = require('../models/Agency');
+    } else if (type === 'agencies') {
       const agency = await Agency.findById(targetId);
       if (agency) {
-        // 🟢 SAFE MATH: Subtract the exact payout, never hardcode to 0
         agency.wallet_balance = Number(Math.max(0, agency.wallet_balance - exactAmount).toFixed(2));
         await agency.save();
       }
     }
-    
     res.status(200).json({ message: "Payout marked as settled successfully." });
-  } catch (error) { 
-    res.status(500).json({ error: error.message }); 
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
 router.get('/admin/workers', authMiddleware, async (req, res) => {
   try {
-    const allWorkers = await User.find({ role: 'worker' }).populate('agency_id', 'name').sort({ created_at: -1 }); 
+    const allWorkers = await User.find({ role: 'worker' }).populate('agency_id', 'name').sort({ created_at: -1 });
     res.status(200).json(allWorkers);
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 router.put('/admin/workers/:id/verify', authMiddleware, async (req, res) => {
   try {
-    const { verification_status } = req.body; 
-    const worker = await User.findByIdAndUpdate(req.params.id, { verification_status: verification_status, is_verified: verification_status === 'verified' }, { new: true });
+    const { verification_status } = req.body;
+    const worker = await User.findByIdAndUpdate(
+      req.params.id,
+      { verification_status: verification_status, is_verified: verification_status === 'verified' },
+      { new: true }
+    );
     res.status(200).json(worker);
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 router.post('/agency/withdraw', authMiddleware, async (req, res) => {
@@ -143,30 +171,25 @@ router.post('/agency/withdraw', authMiddleware, async (req, res) => {
     const user = await User.findOne({ auth_id: req.authId });
     const agency = await Agency.findById(user?.agency_id);
     if (!agency) return res.status(404).json({ error: "Agency not found." });
-
-    // 🟢 EXACT DECIMAL MATH (Fixes the 400 Bad Request)
     const withdrawAmount = Number(Number(amount).toFixed(2));
     if (withdrawAmount <= 0 || agency.wallet_balance < withdrawAmount) {
-        return res.status(400).json({ error: "Invalid amount or insufficient balance." });
+      return res.status(400).json({ error: "Invalid amount or insufficient balance." });
     }
-
     agency.wallet_balance = Number((agency.wallet_balance - withdrawAmount).toFixed(2));
     await agency.save();
-
     const request = new WithdrawalRequest({
-      entity_id: agency._id, 
-      entity_type: 'agency', 
-      entity_name: agency.name, 
+      entity_id: agency._id,
+      entity_type: 'agency',
+      entity_name: agency.name,
       contact_info: agency.phone || agency.email || 'N/A',
-      amount: withdrawAmount, 
-      payout_method: payout_method || 'upi', 
+      amount: withdrawAmount,
+      payout_method: payout_method || 'upi',
       payout_details: payout_details || {}
     });
     await request.save();
-
     res.status(200).json({ message: "Withdrawal request submitted to admin!", new_balance: agency.wallet_balance });
-  } catch (error) { 
-    res.status(500).json({ error: error.message }); 
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
@@ -174,21 +197,21 @@ router.get('/admin/withdrawals/pending', authMiddleware, async (req, res) => {
   try {
     const requests = await WithdrawalRequest.find({ status: 'pending' }).sort({ created_at: 1 });
     res.status(200).json(requests);
-  } catch (error) { res.status(500).json({ error: error.message }); }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 router.put('/admin/withdrawals/:id', authMiddleware, async (req, res) => {
   try {
-    const { status } = req.body; 
+    const { status } = req.body;
     const request = await WithdrawalRequest.findById(req.params.id);
     if (!request) return res.status(404).json({ error: "Request not found" });
-
+    
     if (status === 'approved' && request.status !== 'approved') {
       try {
-        // 🟢 1. FETCH EXACT PHONE AND EMAIL FOR RAZORPAY SMS/EMAIL
         let entityPhone = '';
         let entityEmail = '';
-
         if (request.entity_type === 'worker') {
           const worker = await User.findById(request.entity_id);
           if (worker) { entityPhone = worker.phone; entityEmail = worker.email; }
@@ -196,44 +219,47 @@ router.put('/admin/withdrawals/:id', authMiddleware, async (req, res) => {
           const agency = await Agency.findById(request.entity_id);
           if (agency) { entityPhone = agency.phone; entityEmail = agency.email; }
         }
-
-        // 🟢 2. CREATE RAZORPAY CONTACT WITH FULL NOTIFICATION DETAILS
+        
+        const authHeader = `Basic ${Buffer.from(`${process.env.RAZORPAY_KEY_ID}:${process.env.RAZORPAY_KEY_SECRET}`).toString('base64')}`;
+        
         // 1. Create Contact
         const contactData = {
-          name: request.entity_name,
-          type: "vendor", // 🟢 FIXED: Replaced request.entity_type with "vendor"
+          name: request.entity_name || "Flasho Partner",
+          type: "vendor",
           reference_id: request.entity_id.toString(),
-          ...(entityPhone && { contact: entityPhone }), 
-          ...(entityEmail && { email: entityEmail })    
+          ...(entityPhone && { contact: entityPhone }),
+          ...(entityEmail && { email: entityEmail })
         };
-        const contactRes = await axios.post('https://api.razorpay.com/v1/contacts', contactData, { 
+        const contactRes = await axios.post('https://api.razorpay.com/v1/contacts', contactData, {
           headers: { 'Authorization': authHeader }
         });
-        
-        const contact = await razorpay.contacts.create(contactData);
-        
+
+        // 2. Create Fund Account
         let fundAccountPayload = {
-          contact_id: contact.id,
+          contact_id: contactRes.data.id,
           account_type: request.payout_method === 'upi' ? 'vpa' : 'bank_account',
         };
-        
+
         if (request.payout_method === 'upi') {
-          fundAccountPayload.vpa = { address: request.payout_details.upi_id };
+          fundAccountPayload.vpa = { address: request.payout_details?.upi_id };
         } else {
           fundAccountPayload.bank_account = {
-            name: request.payout_details.account_name,
-            ifsc: request.payout_details.ifsc_code,
-            account_number: request.payout_details.account_number
+            name: request.payout_details?.account_name,
+            ifsc: request.payout_details?.ifsc_code,
+            account_number: request.payout_details?.account_number
           };
         }
-        
-        const fundAccount = await razorpay.fundAccount.create(fundAccountPayload);
-        const amountInPaise = Math.round(request.amount * 100);
 
-        const payout = await razorpay.payouts.create({
-          account_number: process.env.RAZORPAYX_ACCOUNT_NUMBER, 
-          fund_account_id: fundAccount.id,
-          amount: amountInPaise, 
+        const fundRes = await axios.post('https://api.razorpay.com/v1/fund_accounts', fundAccountPayload, {
+          headers: { 'Authorization': authHeader }
+        });
+
+        // 3. Initiate Payout
+        const amountInPaise = Math.round(request.amount * 100);
+        const payoutPayload = {
+          account_number: process.env.RAZORPAYX_ACCOUNT_NUMBER,
+          fund_account_id: fundRes.data.id,
+          amount: amountInPaise,
           currency: "INR",
           mode: request.payout_method === 'upi' ? "UPI" : "IMPS",
           purpose: "payout",
@@ -243,15 +269,17 @@ router.put('/admin/withdrawals/:id', authMiddleware, async (req, res) => {
             platform: "Flasho",
             payout_type: request.entity_type
           }
+        };
+        const payoutRes = await axios.post('https://api.razorpay.com/v1/payouts', payoutPayload, {
+          headers: { 'Authorization': authHeader }
         });
+        console.log(`[RAZORPAY] Payout Executed! ID: ${payoutRes.data.id}`);
 
-        console.log(`[RAZORPAY] Payout Executed & SMS Triggered! ID: ${payout.id}`);
-
-        // 🟢 3. SEND IN-APP PUSH NOTIFICATION
+        // 4. Send notifications
         if (request.entity_type === 'worker') {
           await NotificationService.sendToUser(
             request.entity_id,
-            "Bank Transfer Successful! 🏦",
+            "Bank Transfer Successful! 💸",
             `₹${request.amount.toFixed(2)} has been successfully transferred to your bank account.`,
             { type: 'withdrawal_success' }
           );
@@ -260,63 +288,87 @@ router.put('/admin/withdrawals/:id', authMiddleware, async (req, res) => {
           if (owner) {
             await NotificationService.sendToUser(
               owner._id,
-              "Agency Payout Successful! 🏦",
+              "Agency Payout Successful! 💸",
               `₹${request.amount.toFixed(2)} has been successfully transferred to your corporate bank account.`,
               { type: 'withdrawal_success' }
             );
           }
         }
-
       } catch (payoutErr) {
-        console.error("[RAZORPAY ERROR]", payoutErr);
-        return res.status(400).json({ error: "Razorpay Failed: " + (payoutErr.error?.description || payoutErr.message || "Unknown API error") });
+        console.error("[RAZORPAY ERROR]", payoutErr.response?.data || payoutErr.message);
+        const errorDesc = payoutErr.response?.data?.error?.description || payoutErr.message || "Unknown API error";
+        return res.status(400).json({ error: "Razorpay Failed: " + errorDesc });
       }
     }
-
+    
     if (status === 'rejected' && request.status !== 'rejected') {
       if (request.entity_type === 'worker') {
         const worker = await User.findById(request.entity_id);
-        if (worker) { 
-          worker.wallet_balance = Number((worker.wallet_balance + request.amount).toFixed(2)); 
-          await worker.save(); 
-          await NotificationService.sendToUser(worker._id, "Withdrawal Failed ❌", `Your ₹${request.amount.toFixed(2)} withdrawal was rejected. The funds have been safely returned to your app wallet.`, { type: 'withdrawal_failed' });
+        if (worker) {
+          worker.wallet_balance = Number((worker.wallet_balance + request.amount).toFixed(2));
+          await worker.save();
+          await NotificationService.sendToUser(
+            worker._id,
+            "Withdrawal Failed ❌",
+            `Your ₹${request.amount.toFixed(2)} withdrawal was rejected. The funds have been safely returned to your app wallet.`,
+            { type: 'withdrawal_failed' }
+          );
         }
       } else {
         const agency = await Agency.findById(request.entity_id);
-        if (agency) { 
-          agency.wallet_balance = Number((agency.wallet_balance + request.amount).toFixed(2)); 
-          await agency.save(); 
+        if (agency) {
+          agency.wallet_balance = Number((agency.wallet_balance + request.amount).toFixed(2));
+          await agency.save();
           const owner = await User.findOne({ agency_id: request.entity_id });
-          if (owner) await NotificationService.sendToUser(owner._id, "Withdrawal Failed ❌", `Your agency's ₹${request.amount.toFixed(2)} withdrawal was rejected. Funds returned to your agency wallet.`, { type: 'withdrawal_failed' });
+          if (owner) {
+            await NotificationService.sendToUser(
+              owner._id,
+              "Withdrawal Failed ❌",
+              `Your agency's ₹${request.amount.toFixed(2)} withdrawal was rejected. Funds returned to your agency wallet.`,
+              { type: 'withdrawal_failed' }
+            );
+          }
         }
       }
     }
-    
+
     request.status = status;
     await request.save();
-    
+
     res.status(200).json({ message: `Request marked as ${status}.` });
-  } catch (error) { 
-    res.status(500).json({ error: error.message }); 
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
 });
 
 router.get('/admin/reviews', authMiddleware, async (req, res) => {
   try {
-    const reviews = await Review.find().populate('client_id', 'full_name email').populate('worker_id', 'full_name phone agency_id').populate('booking_id', 'service_title').sort({ _id: -1 });
+    const reviews = await Review.find()
+      .populate('client_id', 'full_name email')
+      .populate('worker_id', 'full_name phone agency_id')
+      .populate('booking_id', 'service_title')
+      .sort({ _id: -1 });
     res.json(reviews);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 router.get('/agency/reviews', authMiddleware, async (req, res) => {
   try {
     const user = await User.findOne({ auth_id: req.authId });
-    if (!user || !user.agency_id) return res.status(403).json({error: "Not an agency"});
+    if (!user || !user.agency_id) return res.status(403).json({ error: "Not an agency" });
     const workers = await User.find({ agency_id: user.agency_id }).select('_id');
     const workerIds = workers.map(w => w._id);
-    const reviews = await Review.find({ worker_id: { $in: workerIds } }).populate('client_id', 'full_name').populate('worker_id', 'full_name phone').populate('booking_id', 'service_title').sort({ _id: -1 });
+    const reviews = await Review.find({ worker_id: { $in: workerIds } })
+      .populate('client_id', 'full_name')
+      .populate('worker_id', 'full_name phone')
+      .populate('booking_id', 'service_title')
+      .sort({ _id: -1 });
     res.json(reviews);
-  } catch (err) { res.status(500).json({ error: err.message }); }
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 module.exports = router;

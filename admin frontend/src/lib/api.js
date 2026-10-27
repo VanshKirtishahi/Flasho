@@ -3,7 +3,7 @@ import { supabase } from './supabase';
 
 // 🟢 Dynamically pulls your live link, falls back to localhost for local testing
 const api = axios.create({
-  baseURL:'http://localhost:5000/api',
+  baseURL:'https://flasho.onrender.com/api',
 });
 
 // 🟢 AUTOMATION: Automatically fetches and attaches the Supabase token to EVERY request

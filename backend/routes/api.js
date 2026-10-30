@@ -371,4 +371,15 @@ router.get('/agency/reviews', authMiddleware, async (req, res) => {
   }
 });
 
+
+// ==========================================
+// 🟢 ACCOUNT DELETION (Play Store Compliance)
+// ==========================================
+const accountDeletionController = require('../controllers/accountDeletionController');
+router.post('/account-deletion-request', accountDeletionController.submitDeletionRequest);
+router.get('/account-deletion-requests', accountDeletionController.getAllRequests);
+router.post('/account-deletion-requests/:id/approve', accountDeletionController.approveAndProcessDeletion);
+router.post('/account-deletion-requests/:id/reject', accountDeletionController.rejectRequest);
+router.delete('/account-deletion-requests/:id', accountDeletionController.deleteRequestRecord);
+
 module.exports = router;
